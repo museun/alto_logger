@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["museun <museun@outlook.com>"]
 edition = "2018"
 license = "0BSD"
+repository = "https://github.com/museun/alto_logger"
+description = "an opinionated logger that provides colorful and multi-line output"
+readme = "README.md"
+keywords = ["log", "logging", "logger"]
+categories = "debugging"
 
 [dependencies]
 log = "0.4.8"

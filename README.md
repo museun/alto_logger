@@ -1,6 +1,13 @@
 # alto_logger
 
-#### single lines
+## filtering
+use the environmental variable `RUST_LOG` with `module_name=level`
+
+> RUST_LOG="tokio=warn,my_module=info,my_module::inner=trace"
+
+
+## output
+#### single line
 ```rust
 alto_logger::init(Style::SingleLine, ColorConfig::default()).unwrap();
 ```

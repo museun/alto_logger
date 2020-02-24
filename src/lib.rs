@@ -113,8 +113,7 @@ pub fn init(style: Style, color: ColorConfig) -> Result<(), log::SetLoggerError>
         filters: std::env::var("RUST_LOG")
             .map(|value| {
                 let mut mapping = value
-                    .split(",")
-                    .into_iter()
+                    .split(',')
                     .filter_map(|input| parse(input))
                     .collect::<Vec<_>>();
                 match mapping.len() {
@@ -175,15 +174,12 @@ impl Logger {
         let _ = buffer.reset();
         let _ = write!(buffer, "]");
 
-        match self.style {
-            Style::MultiLine => {
-                let _ = writeln!(buffer);
-                let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.continuation.into()));
-                let _ = write!(buffer, "{}", "⤷");
-                let _ = buffer.reset();
-            }
-            _ => {}
-        };
+        if let Style::MultiLine = self.style {
+            let _ = writeln!(buffer);
+            let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.continuation.into()));
+            let _ = write!(buffer, "⤷");
+            let _ = buffer.reset();
+        }
 
         let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.message.into()));
         let _ = write!(buffer, " {}", record.args());
