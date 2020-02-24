@@ -1,9 +1,13 @@
 /*! alto_logger
 
-usage:
-### single lines
+## filtering
+use the environmental variable `RUST_LOG` with `module_name=level`
+
+> RUST_LOG="tokio=warn,my_module=info,my_module::inner=trace"
+
+## output
+#### single line
 ```rust
-# use alto_logger::{Style, ColorConfig};
 alto_logger::init(Style::SingleLine, ColorConfig::default()).unwrap();
 ```
 ```norun
@@ -16,9 +20,8 @@ TRACE 0000.005196400s [mio::sys::windows::selector] select; timeout=None
 TRACE 0000.005473200s [mio::sys::windows::selector] polling IOCP
 ```
 
-### multiple lines
+#### multiple lines
 ```rust
-# use alto_logger::{Style, ColorConfig};
 alto_logger::init(Style::MultiLine, ColorConfig::default()).unwrap();
 ```
 ```norun
@@ -37,7 +40,6 @@ TRACE 0000.007179100s [mio::sys::windows::selector]
 TRACE 0000.007552300s [mio::sys::windows::selector]
 ⤷ polling IOCP
 ```
-
 */
 
 use std::borrow::Cow;
