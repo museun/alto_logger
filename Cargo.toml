@@ -1,6 +1,6 @@
 [package]
 name          = "alto_logger"
-version       = "0.1.0"
+version       = "0.1.1"
 edition       = "2018"
 
 authors       = ["museun <museun@outlook.com>"]
