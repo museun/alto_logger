@@ -8,7 +8,7 @@ repository = "https://github.com/museun/alto_logger"
 description = "an opinionated logger that provides colorful and multi-line output"
 readme = "README.md"
 keywords = ["log", "logging", "logger"]
-categories = "debugging"
+categories = ["debugging"]
 
 [dependencies]
 log = "0.4.8"
