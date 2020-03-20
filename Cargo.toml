@@ -15,7 +15,6 @@ readme        = "README.md"
 keywords      = ["log", "logging", "logger"]
 categories    = ["development-tools::debugging"]
 
-
 [dependencies]
 log       = "0.4.8"
 termcolor = "1.1.0"

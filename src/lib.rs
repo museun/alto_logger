@@ -1,13 +1,14 @@
 /*! alto_logger
 
 ## filtering
-use the environmental variable `RUST_LOG` with `module_name=level`
+Use the ENV variable `RUST_LOG` with `module_name=level`
 
-> RUST_LOG="tokio=warn,my_module=info,my_module::inner=trace"
+`RUST_LOG="tokio=warn,my_module=info,my_module::inner=trace"`
 
 ## output
 #### single line
 ```rust
+# use alto_logger::*;
 alto_logger::init(Style::SingleLine, ColorConfig::default()).unwrap();
 ```
 ```norun
@@ -22,6 +23,7 @@ TRACE 0000.005473200s [mio::sys::windows::selector] polling IOCP
 
 #### multiple lines
 ```rust
+# use alto_logger::*;
 alto_logger::init(Style::MultiLine, ColorConfig::default()).unwrap();
 ```
 ```norun
@@ -90,6 +92,23 @@ pub struct ColorConfig {
     pub message: Color,
 }
 
+impl ColorConfig {
+    /// Create a monochrome (e.g. all 'white') color configuration
+    pub fn monochrome() -> Self {
+        Self {
+            level_trace: Color::White,
+            level_debug: Color::White,
+            level_info: Color::White,
+            level_warn: Color::White,
+            level_error: Color::White,
+            timestamp: Color::White,
+            target: Color::White,
+            continuation: Color::White,
+            message: Color::White,
+        }
+    }
+}
+
 impl Default for ColorConfig {
     fn default() -> Self {
         Self {
@@ -108,6 +127,11 @@ impl Default for ColorConfig {
 }
 
 /// Initialize the logger
+///
+/// # Error return type
+/// To have this error type implement `std::error::Error` enable the **std** feature of the `log` crate.
+///
+/// `log = { version = "0.4", features = ["std"] }`
 pub fn init(style: Style, color: ColorConfig) -> Result<(), log::SetLoggerError> {
     let instance = INSTANCE.get_or_init(|| Logger {
         style,
