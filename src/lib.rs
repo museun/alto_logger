@@ -51,7 +51,10 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write as _;
 
-use termcolor::{Color, ColorSpec, WriteColor as _};
+#[doc(inline)]
+pub use termcolor::Color;
+
+use termcolor::{ColorSpec, WriteColor as _};
 
 #[non_exhaustive]
 #[derive(Default)]
@@ -97,6 +100,14 @@ pub enum TimeConfig {
     #[cfg(feature = "time")]
     /// Timestamp formatted with from UTC 'now'. See [`formatting`](https://docs.rs/time/0.2.9/time/index.html#formatting)
     DateTime(String),
+}
+
+impl TimeConfig {
+    #[cfg(feature = "time")]
+    // Create a DateTime format
+    pub fn date_time_format(s: impl ToString) -> Self {
+        Self::DateTime(s.to_string())
+    }
 }
 
 impl Default for TimeConfig {
@@ -159,6 +170,18 @@ impl ColorConfig {
             target: Color::White,
             continuation: Color::White,
             message: Color::White,
+        }
+    }
+
+    /// Only the levels should have the default colors, the rest should be monochrome
+    pub const fn only_levels() -> Self {
+        Self {
+            level_trace: Color::Blue,
+            level_debug: Color::Cyan,
+            level_info: Color::Green,
+            level_warn: Color::Yellow,
+            level_error: Color::Red,
+            ..Self::monochrome()
         }
     }
 }
@@ -240,6 +263,9 @@ pub fn init(options: Options) -> Result<(), Error> {
         start: std::time::Instant::now(),
     };
 
+    // enables trace for all
+    // TODO this is wrong
+    log::set_max_level(log::LevelFilter::Trace);
     log::set_boxed_logger(Box::new(instance)).map_err(Error::SetLogger)
 }
 
