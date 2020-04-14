@@ -21,4 +21,9 @@ termcolor = "1.1"
 time      = { version = "0.2", optional = true, default-features = false, features = ["std"] }
 
 [dev-dependencies]
-doc-comment = "0.3.3"
+doc-comment = "0.3"
+log         = { version = "0.4", features = ["std"] }
+
+[[example]]
+name = "demo"
+required-features = ["time"]
