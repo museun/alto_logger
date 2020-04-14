@@ -16,6 +16,9 @@ keywords      = ["log", "logging", "logger"]
 categories    = ["development-tools::debugging"]
 
 [dependencies]
-log       = "0.4.8"
-termcolor = "1.1.0"
-once_cell = "1.3.1"
+log       = { version = "0.4", features = ["std"] }
+termcolor = "1.1"
+time      = { version = "0.2", optional = true, default-features = false, features = ["std"] }
+
+[dev-dependencies]
+doc-comment = "0.3.3"

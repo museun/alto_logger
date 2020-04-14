@@ -9,7 +9,7 @@ Use the ENV variable `RUST_LOG` with `module_name=level`
 #### single line
 ```rust
 # use alto_logger::*;
-alto_logger::init(Style::SingleLine, ColorConfig::default()).unwrap();
+alto_logger::init(Options::default().with_style(StyleConfig::SingleLine)).unwrap();
 ```
 ```norun
 TRACE 0000.003160400s [mio::poll] registering with poller
@@ -24,7 +24,7 @@ TRACE 0000.005473200s [mio::sys::windows::selector] polling IOCP
 #### multiple lines
 ```rust
 # use alto_logger::*;
-alto_logger::init(Style::MultiLine, ColorConfig::default()).unwrap();
+alto_logger::init(Options::default().with_style(StyleConfig::MultiLine)).unwrap();
 ```
 ```norun
 TRACE 0000.004610900s [mio::poll]
@@ -44,18 +44,72 @@ TRACE 0000.007552300s [mio::sys::windows::selector]
 ```
 */
 
+#[cfg(all(doctest))]
+doc_comment::doctest!("../README.md");
+
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::io::Write as _;
 
-use once_cell::sync::OnceCell;
 use termcolor::{Color, ColorSpec, WriteColor as _};
 
-static INSTANCE: OnceCell<Logger> = OnceCell::new();
+#[non_exhaustive]
+#[derive(Default)]
+/// A set of options for configuring the logger
+pub struct Options {
+    /// The style configuration
+    pub style: StyleConfig,
+    /// The color configuration
+    pub color: ColorConfig,
+    /// The time configuration
+    pub time: TimeConfig,
+}
+
+impl Options {
+    /// Use this `StyleConfig` with these `Options`
+    pub fn with_style(mut self, style: StyleConfig) -> Self {
+        self.style = style;
+        self
+    }
+
+    /// Use this `ColorConfig` with these `Options`
+    pub fn with_color(mut self, color: ColorConfig) -> Self {
+        self.color = color;
+        self
+    }
+
+    /// Use this `TimeConfig` with these `Options`
+    pub fn with_time(mut self, time: TimeConfig) -> Self {
+        self.time = time;
+        self
+    }
+}
+
+#[non_exhaustive]
+/// How the timestamp should be displayed
+///
+/// Defaults to the Relative timestamp
+pub enum TimeConfig {
+    /// No timestamp
+    None,
+    /// Relative timestamp from the start of the program
+    Relative,
+    #[cfg(feature = "time")]
+    /// Timestamp formatted with from UTC 'now'. See [`formatting`](https://docs.rs/time/0.2.9/time/index.html#formatting)
+    DateTime(String),
+}
+
+impl Default for TimeConfig {
+    fn default() -> Self {
+        Self::Relative
+    }
+}
 
 /// Logger style
+///
+/// Defaults to MultiLine
 #[non_exhaustive]
-pub enum Style {
+pub enum StyleConfig {
     /// Use a single-line format
     SingleLine,
     /// Use a multi-line format
@@ -63,7 +117,7 @@ pub enum Style {
 }
 
 /// Defaults to Multiline
-impl Default for Style {
+impl Default for StyleConfig {
     fn default() -> Self {
         Self::MultiLine
     }
@@ -94,7 +148,7 @@ pub struct ColorConfig {
 
 impl ColorConfig {
     /// Create a monochrome (e.g. all 'white') color configuration
-    pub fn monochrome() -> Self {
+    pub const fn monochrome() -> Self {
         Self {
             level_trace: Color::White,
             level_debug: Color::White,
@@ -126,16 +180,47 @@ impl Default for ColorConfig {
     }
 }
 
-/// Initialize the logger
-///
-/// # Error return type
-/// To have this error type implement `std::error::Error` enable the **std** feature of the `log` crate.
-///
-/// `log = { version = "0.4", features = ["std"] }`
-pub fn init(style: Style, color: ColorConfig) -> Result<(), log::SetLoggerError> {
-    let instance = INSTANCE.get_or_init(|| Logger {
-        style,
-        color,
+#[derive(Debug)]
+/// An error returned by the logger initialization
+pub enum Error {
+    /// Logger was already set
+    SetLogger(log::SetLoggerError),
+    #[cfg(feature = "time")]
+    /// Invalid time format string
+    InvalidFormatString(String),
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::SetLogger(err) => write!(f, "{}", err),
+            #[cfg(feature = "time")]
+            Self::InvalidFormatString(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    #[allow(irrefutable_let_patterns)] // this is so we don't have to check every feature
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        if let Self::SetLogger(err) = &self {
+            return Some(err);
+        }
+        None
+    }
+}
+
+/// Initialize the logger with the provided options
+pub fn init(options: Options) -> Result<(), Error> {
+    #[cfg(feature = "time")]
+    {
+        if let TimeConfig::DateTime(format) = &options.time {
+            time::validate_format_string(format).map_err(Error::InvalidFormatString)?;
+        }
+    }
+
+    let instance = Logger {
+        options,
         filters: std::env::var("RUST_LOG")
             .map(|value| {
                 let mut mapping = value
@@ -153,15 +238,13 @@ pub fn init(style: Style, color: ColorConfig) -> Result<(), log::SetLoggerError>
             })
             .unwrap_or_default(),
         start: std::time::Instant::now(),
-    });
+    };
 
-    log::set_max_level(log::LevelFilter::Trace);
-    log::set_logger(instance)
+    log::set_boxed_logger(Box::new(instance)).map_err(Error::SetLogger)
 }
 
 struct Logger {
-    style: Style,
-    color: ColorConfig,
+    options: Options,
     filters: Filters,
     start: std::time::Instant,
 }
@@ -170,44 +253,63 @@ impl Logger {
     fn print(&self, record: &log::Record) {
         let elapsed = self.start.elapsed();
 
+        let Options {
+            color,
+            time: timestamp,
+            style,
+            ..
+        } = &self.options;
+
         let buf_writer = termcolor::BufferWriter::stdout(termcolor::ColorChoice::Auto);
         let mut buffer = buf_writer.buffer();
 
-        let color = match record.level() {
-            log::Level::Error => self.color.level_error,
-            log::Level::Warn => self.color.level_warn,
-            log::Level::Info => self.color.level_info,
-            log::Level::Debug => self.color.level_debug,
-            log::Level::Trace => self.color.level_trace,
+        let level_color = match record.level() {
+            log::Level::Error => color.level_error,
+            log::Level::Warn => color.level_warn,
+            log::Level::Info => color.level_info,
+            log::Level::Debug => color.level_debug,
+            log::Level::Trace => color.level_trace,
         };
 
-        let _ = buffer.set_color(ColorSpec::new().set_fg(color.into()));
+        let _ = buffer.set_color(ColorSpec::new().set_fg(level_color.into()));
         let _ = write!(buffer, "{:<5} ", record.level());
         let _ = buffer.reset();
 
-        let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.timestamp.into()));
-        let _ = write!(
-            buffer,
-            "{:04}.{:09}s",
-            elapsed.as_secs(),
-            elapsed.subsec_nanos()
-        );
-        let _ = buffer.reset();
+        match timestamp {
+            TimeConfig::None => {}
+            TimeConfig::Relative => {
+                let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                let _ = write!(
+                    buffer,
+                    "{:04}.{:09}s",
+                    elapsed.as_secs(),
+                    elapsed.subsec_nanos()
+                );
+                let _ = buffer.reset();
+            }
+            #[cfg(feature = "time")]
+            TimeConfig::DateTime(format) => {
+                let now = time::OffsetDateTime::now().format(&format);
+                let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                let _ = write!(buffer, "{}", now);
+                let _ = buffer.reset();
+            }
+        }
 
         let _ = write!(buffer, " [");
-        let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.target.into()));
+        let _ = buffer.set_color(ColorSpec::new().set_fg(color.target.into()));
         let _ = write!(buffer, "{}", record.target());
         let _ = buffer.reset();
         let _ = write!(buffer, "]");
 
-        if let Style::MultiLine = self.style {
+        if let StyleConfig::MultiLine = style {
             let _ = writeln!(buffer);
-            let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.continuation.into()));
+            let _ = buffer.set_color(ColorSpec::new().set_fg(color.continuation.into()));
             let _ = write!(buffer, "⤷");
             let _ = buffer.reset();
         }
 
-        let _ = buffer.set_color(ColorSpec::new().set_fg(self.color.message.into()));
+        let _ = buffer.set_color(ColorSpec::new().set_fg(color.message.into()));
         let _ = write!(buffer, " {}", record.args());
         let _ = buffer.reset();
         let _ = writeln!(buffer);
