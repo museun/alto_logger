@@ -16,6 +16,16 @@ pub struct TermLogger {
     disable_colors: bool,
 }
 
+impl Default for TermLogger {
+    fn default() -> Self {
+        Self {
+            options: Options::default(),
+            filters: Filters::from_env(),
+            disable_colors: std::env::var("NO_COLOR").is_ok(),
+        }
+    }
+}
+
 impl TermLogger {
     /// Create a new terminal logger
     pub fn new(options: impl Into<Options>) -> Result<Self, crate::Error> {
