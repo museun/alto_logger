@@ -120,6 +120,11 @@ impl FileLogger<std::fs::File> {
 }
 
 impl<W: Write + Send + 'static> FileLogger<W> {
+    /// Use this logger as the 'installed' logger (same as alto_logger::init(this);)
+    pub fn init(self) -> Result<(), crate::Error> {
+        crate::init(self)
+    }
+
     /// Create a new file logger for this writer
     pub fn new(options: impl Into<Options>, writer: W) -> Self {
         let options = options.into();

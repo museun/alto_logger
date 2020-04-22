@@ -27,6 +27,11 @@ impl Default for TermLogger {
 }
 
 impl TermLogger {
+    /// Use this logger as the 'installed' logger (same as alto_logger::init(this);)
+    pub fn init(self) -> Result<(), crate::Error> {
+        crate::init(self)
+    }
+
     /// Create a new terminal logger
     pub fn new(options: impl Into<Options>) -> Result<Self, crate::Error> {
         let options = options.into();

@@ -9,6 +9,11 @@ pub struct MultiLogger {
 }
 
 impl MultiLogger {
+    /// Use this logger as the 'installed' logger (same as alto_logger::init(this);)
+    pub fn init(self) -> Result<(), crate::Error> {
+        crate::init(self)
+    }
+
     /// Create a new Multilogger without any loggers
     pub fn new() -> Self {
         Self {
