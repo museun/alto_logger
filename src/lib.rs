@@ -35,6 +35,18 @@ pub use termcolor::Color;
 /// )
 /// .unwrap()
 /// ```
+///
+/// And using the shorthands
+/// ```rust,ignore
+/// use alto_logger::*;
+/// MultiLogger::new()
+///     .with(TermLogger::default())
+///      // date_time_format requires the `time` feature
+///     .with(FileLogger::append(TimeConfig::date_time_format("%c"), "output.log").unwrap())
+///     .init()
+///     .expect("init logger");
+/// ```
+///
 pub fn init(logger: impl log::Log + 'static) -> Result<(), Error> {
     // enables trace for all
     // TODO this is wrong
