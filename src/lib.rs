@@ -53,7 +53,7 @@ mod loggers;
 
 pub mod options;
 #[doc(inline)]
-pub use options::Options;
+pub use options::*;
 
 pub use loggers::*;
 
