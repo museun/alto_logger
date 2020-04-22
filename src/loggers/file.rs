@@ -14,7 +14,12 @@ pub struct FileLogger<W: Send + 'static> {
 
 impl FileLogger<std::fs::File> {
     /// Create a new file logger that truncates the log file before starting.
-    pub fn truncate(options: Options, path: impl AsRef<Path>) -> Result<Self, crate::Error> {
+    pub fn truncate(
+        options: impl Into<Options>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, crate::Error> {
+        let options = options.into();
+
         let path = path.as_ref();
         std::fs::OpenOptions::new()
             .create(true)
@@ -29,7 +34,12 @@ impl FileLogger<std::fs::File> {
     }
 
     /// Create a new file logger that appends to the log file.
-    pub fn append(options: Options, path: impl AsRef<Path>) -> Result<Self, crate::Error> {
+    pub fn append(
+        options: impl Into<Options>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, crate::Error> {
+        let options = options.into();
+
         let path = path.as_ref();
         std::fs::OpenOptions::new()
             .create(true)
@@ -49,7 +59,12 @@ impl FileLogger<std::fs::File> {
     /// Example:
     /// * `out.log` will become `out_1587429534.log`
     /// * `out` will become `out_1587429534`
-    pub fn timestamp(options: Options, path: impl AsRef<Path>) -> Result<Self, crate::Error> {
+    pub fn timestamp(
+        options: impl Into<Options>,
+        path: impl AsRef<Path>,
+    ) -> Result<Self, crate::Error> {
+        let options = options.into();
+
         fn io_err(reason: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> crate::Error {
             crate::Error::FileLogger(std::io::Error::new(std::io::ErrorKind::Other, reason))
         }
@@ -106,7 +121,8 @@ impl FileLogger<std::fs::File> {
 
 impl<W: Write + Send + 'static> FileLogger<W> {
     /// Create a new file logger for this writer
-    pub fn new(options: Options, writer: W) -> Self {
+    pub fn new(options: impl Into<Options>, writer: W) -> Self {
+        let options = options.into();
         Self {
             options,
             filters: Filters::from_env(),

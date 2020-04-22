@@ -44,7 +44,7 @@ pub fn init(logger: impl log::Log + 'static) -> Result<(), Error> {
 
 /// Convenience function to create a default terminal logger
 pub fn init_term_logger() -> Result<(), Error> {
-    TermLogger::new(Default::default()).and_then(init)
+    TermLogger::new(Options::default()).and_then(init)
 }
 
 mod error;

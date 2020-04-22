@@ -18,7 +18,9 @@ pub struct TermLogger {
 
 impl TermLogger {
     /// Create a new terminal logger
-    pub fn new(options: Options) -> Result<Self, crate::Error> {
+    pub fn new(options: impl Into<Options>) -> Result<Self, crate::Error> {
+        let options = options.into();
+
         #[cfg(feature = "time")]
         {
             if let TimeConfig::DateTime(format) = &options.time {

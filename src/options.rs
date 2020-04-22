@@ -49,6 +49,24 @@ impl Options {
     }
 }
 
+impl From<TimeConfig> for Options {
+    fn from(conf: TimeConfig) -> Self {
+        Self::default().with_time(conf)
+    }
+}
+
+impl From<ColorConfig> for Options {
+    fn from(conf: ColorConfig) -> Self {
+        Self::default().with_color(conf)
+    }
+}
+
+impl From<StyleConfig> for Options {
+    fn from(conf: StyleConfig) -> Self {
+        Self::default().with_style(conf)
+    }
+}
+
 #[non_exhaustive]
 /// How the timestamp should be displayed
 ///
