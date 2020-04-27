@@ -1,14 +1,24 @@
 use std::{borrow::Cow, collections::HashMap};
 
-pub(crate) enum Filters {
+#[derive(Debug)]
+pub(crate) enum FiltersKind {
     Default,
     List(Vec<(Cow<'static, str>, log::LevelFilter)>),
     Map(HashMap<Cow<'static, str>, log::LevelFilter>),
 }
 
+#[derive(Debug)]
+pub(crate) struct Filters {
+    kind: FiltersKind,
+    minimum: Option<log::LevelFilter>,
+}
+
 impl Default for Filters {
     fn default() -> Self {
-        Self::Default
+        Self {
+            kind: FiltersKind::Default,
+            minimum: None,
+        }
     }
 }
 
@@ -17,14 +27,24 @@ impl Filters {
         std::env::var("RUST_LOG")
             .map(|input| {
                 let mut mapping = input.split(',').filter_map(parse).collect::<Vec<_>>();
-                match mapping.len() {
-                    0 => Filters::Default,
+
+                let minimum = input
+                    .split(',')
+                    .filter(|s| !s.contains('='))
+                    .flat_map(|s| s.parse().ok())
+                    .filter(|&l| l != log::LevelFilter::Off)
+                    .max();
+
+                let kind = match mapping.len() {
+                    0 => FiltersKind::Default,
                     d if d < 15 => {
                         mapping.shrink_to_fit();
-                        Filters::List(mapping)
+                        FiltersKind::List(mapping)
                     }
-                    _ => Filters::Map(mapping.into_iter().collect()),
-                }
+                    _ => FiltersKind::Map(mapping.into_iter().collect()),
+                };
+
+                Self { kind, minimum }
             })
             .unwrap_or_default()
     }
@@ -39,7 +59,11 @@ impl Filters {
 
     #[inline]
     pub(crate) fn find_module(&self, module: &str) -> Option<log::LevelFilter> {
-        if let Self::Default = self {
+        if self.minimum.is_some() {
+            return self.minimum;
+        }
+
+        if let FiltersKind::Default = self.kind {
             return None;
         }
 
@@ -65,37 +89,21 @@ impl Filters {
 
     #[inline]
     pub(crate) fn find_exact(&self, module: &str) -> Option<log::LevelFilter> {
-        match self {
-            Self::Default => None,
-            Self::List(levels) => levels
+        match &self.kind {
+            FiltersKind::Default => None,
+            FiltersKind::List(levels) => levels
                 .iter()
                 .find_map(|(m, level)| Some(*level).filter(|_| m == module)),
-            Self::Map(levels) => levels.get(module).copied(),
+            FiltersKind::Map(levels) => levels.get(module).copied(),
         }
     }
 }
 
 #[inline]
 pub(crate) fn parse(input: &str) -> Option<(Cow<'static, str>, log::LevelFilter)> {
-    #[inline]
-    fn level(s: &str) -> Option<log::LevelFilter> {
-        macro_rules! eq {
-            ($target:expr) => {
-                s.eq_ignore_ascii_case($target)
-            };
-        }
-
-        match () {
-            _ if eq!("trace") => log::LevelFilter::Trace,
-            _ if eq!("debug") => log::LevelFilter::Debug,
-            _ if eq!("info") => log::LevelFilter::Info,
-            _ if eq!("warn") => log::LevelFilter::Warn,
-            _ if eq!("error") => log::LevelFilter::Error,
-            _ => return None,
-        }
-        .into()
-    }
-
     let mut iter = input.split('=');
-    (iter.next()?.to_string().into(), level(iter.next()?)?).into()
+    Some((
+        Cow::Owned(iter.next()?.to_string()),
+        iter.next()?.to_ascii_uppercase().parse().ok()?,
+    ))
 }
