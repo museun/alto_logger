@@ -23,29 +23,31 @@ impl Default for Filters {
 }
 
 impl Filters {
+    pub(crate) fn from_str(input: &str) -> Self {
+        let mut mapping = input.split(',').filter_map(parse).collect::<Vec<_>>();
+
+        let minimum = input
+            .split(',')
+            .filter(|s| !s.contains('='))
+            .flat_map(|s| s.parse().ok())
+            .filter(|&l| l != log::LevelFilter::Off)
+            .max();
+
+        let kind = match mapping.len() {
+            0 => FiltersKind::Default,
+            d if d < 15 => {
+                mapping.shrink_to_fit();
+                FiltersKind::List(mapping)
+            }
+            _ => FiltersKind::Map(mapping.into_iter().collect()),
+        };
+
+        Self { kind, minimum }
+    }
+
     pub(crate) fn from_env() -> Self {
         std::env::var("RUST_LOG")
-            .map(|input| {
-                let mut mapping = input.split(',').filter_map(parse).collect::<Vec<_>>();
-
-                let minimum = input
-                    .split(',')
-                    .filter(|s| !s.contains('='))
-                    .flat_map(|s| s.parse().ok())
-                    .filter(|&l| l != log::LevelFilter::Off)
-                    .max();
-
-                let kind = match mapping.len() {
-                    0 => FiltersKind::Default,
-                    d if d < 15 => {
-                        mapping.shrink_to_fit();
-                        FiltersKind::List(mapping)
-                    }
-                    _ => FiltersKind::Map(mapping.into_iter().collect()),
-                };
-
-                Self { kind, minimum }
-            })
+            .map(|s| Self::from_str(&s))
             .unwrap_or_default()
     }
 
@@ -59,10 +61,6 @@ impl Filters {
 
     #[inline]
     pub(crate) fn find_module(&self, module: &str) -> Option<log::LevelFilter> {
-        if self.minimum.is_some() {
-            return self.minimum;
-        }
-
         if let FiltersKind::Default = self.kind {
             return None;
         }
@@ -84,7 +82,8 @@ impl Filters {
                 last = true
             }
         }
-        None
+
+        self.minimum
     }
 
     #[inline]
@@ -106,4 +105,28 @@ pub(crate) fn parse(input: &str) -> Option<(Cow<'static, str>, log::LevelFilter)
         Cow::Owned(iter.next()?.to_string()),
         iter.next()?.to_ascii_uppercase().parse().ok()?,
     ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn filters() {
+        let input = "debug,foo::bar=off,foo::baz=trace,foo=info,baz=off,quux=error";
+        let filters = Filters::from_str(input);
+
+        let modules = &[
+            ("foo::bar", log::LevelFilter::Off),
+            ("foo::baz", log::LevelFilter::Trace),
+            ("foo", log::LevelFilter::Info),
+            ("baz", log::LevelFilter::Off),
+            ("quux", log::LevelFilter::Error),
+            ("something", log::LevelFilter::Debug),
+            ("another::thing", log::LevelFilter::Debug),
+        ];
+
+        for (module, expected) in modules {
+            assert_eq!(filters.find_module(module).unwrap(), *expected);
+        }
+    }
 }
