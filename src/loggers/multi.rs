@@ -15,6 +15,7 @@ impl MultiLogger {
     }
 
     /// Create a new Multilogger without any loggers
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             filters: Filters::from_env(),
