@@ -13,6 +13,7 @@ pub struct TermLogger {
     options: Options,
     filters: Filters,
 
+    // TODO mention that it'll honor NO_COLOR
     disable_colors: bool,
 }
 
@@ -74,7 +75,7 @@ impl TermLogger {
         };
 
         let _ = buffer.set_color(ColorSpec::new().set_fg(level_color.into()));
-        let _ = write!(buffer, "{:<5} ", record.level());
+        let _ = write!(buffer, "{:<5}", record.level());
         let _ = buffer.reset();
 
         match timestamp {
@@ -84,12 +85,29 @@ impl TermLogger {
                 let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
                 let _ = write!(
                     buffer,
-                    "{:04}.{:09}s",
+                    " {:04}.{:09}s",
                     elapsed.as_secs(),
                     elapsed.subsec_nanos()
                 );
                 let _ = buffer.reset();
             }
+
+            TimeConfig::Timing(inner) => {
+                let inner = &mut *inner.lock().unwrap();
+                if let Some(start) = &*inner {
+                    let elapsed = start.elapsed();
+                    let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                    let _ = write!(
+                        buffer,
+                        " {:04}.{:09}s",
+                        elapsed.as_secs(),
+                        elapsed.subsec_nanos()
+                    );
+                    let _ = buffer.reset();
+                }
+                inner.replace(std::time::Instant::now());
+            }
+
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
                 let now = time::OffsetDateTime::now().format(&format);

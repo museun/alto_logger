@@ -144,7 +144,7 @@ impl<W: Write + Send + 'static> FileLogger<W> {
         } = &self.options;
 
         let mut file = self.write.lock().unwrap();
-        let _ = write!(file, "{:<5} ", record.level());
+        let _ = write!(file, "{:<5}", record.level());
 
         match timestamp {
             TimeConfig::None => {}
@@ -152,11 +152,26 @@ impl<W: Write + Send + 'static> FileLogger<W> {
                 let elapsed = start.elapsed();
                 let _ = write!(
                     file,
-                    "{:04}.{:09}s",
+                    " {:04}.{:09}s",
                     elapsed.as_secs(),
                     elapsed.subsec_nanos()
                 );
             }
+
+            TimeConfig::Timing(inner) => {
+                let inner = &mut *inner.lock().unwrap();
+                if let Some(start) = &*inner {
+                    let elapsed = start.elapsed();
+                    let _ = write!(
+                        file,
+                        " {:04}.{:09}s",
+                        elapsed.as_secs(),
+                        elapsed.subsec_nanos()
+                    );
+                }
+                inner.replace(std::time::Instant::now());
+            }
+
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
                 let now = time::OffsetDateTime::now().format(&format);

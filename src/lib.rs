@@ -4,6 +4,10 @@ Use the ENV variable `RUST_LOG` with `module_name=level`
 
 `RUST_LOG="tokio=warn,my_module=info,my_module::inner=trace"`
 
+A default level can be provided with just ***level***. e.g. `RUST_LOG=trace` will enable `trace` for all modules.
+
+You can disable specific modules/crates by using the `off` level
+
 ## optional features
 * `time` allows formatting a UTC timestamp with the [`time`](time) crate.
     * see the formatting table [here](https://docs.rs/time/0.2.10/time/#formatting)
@@ -55,6 +59,11 @@ pub fn init(logger: impl log::Log + 'static) -> Result<(), Error> {
 }
 
 /// Convenience function to create a default terminal logger
+///
+/// This defaults to using:
+/// * no timestamp
+/// * default colors
+/// * multi-line output
 pub fn init_term_logger() -> Result<(), Error> {
     TermLogger::new(Options::default()).and_then(init)
 }
@@ -71,3 +80,48 @@ pub use loggers::*;
 
 #[doc(inline)]
 pub use error::Error;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    mod foo {
+        pub fn a() {
+            log::trace!("this is a test")
+        }
+        pub fn b() {
+            log::debug!("this is a test")
+        }
+        pub fn c() {
+            log::info!("this is a test")
+        }
+        pub fn d() {
+            log::warn!("this is a test")
+        }
+        pub fn e() {
+            log::error!("this is a test")
+        }
+    }
+
+    #[test]
+    fn timing() {
+        std::env::set_var("RUST_LOG", "alto_logger::tests::foo=trace");
+
+        TermLogger::new(Options::default().with_time(TimeConfig::relative_local()))
+            .unwrap()
+            .init()
+            .unwrap();
+
+        use rand::prelude::*;
+
+        let mut rng = thread_rng();
+
+        [foo::a, foo::b, foo::c, foo::d, foo::e]
+            .iter()
+            .map(|f| {
+                f();
+                std::thread::sleep(std::time::Duration::from_millis(rng.gen_range(100, 1000)));
+            })
+            .last();
+    }
+}

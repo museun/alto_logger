@@ -26,6 +26,7 @@ time      = { version = "0.2", optional = true, default-features = false, featur
 [dev-dependencies]
 doc-comment = "0.3"
 log         = { version = "0.4", features = ["std"] }
+rand = "0.7.3"
 
 [[example]]
 name = "demo"
