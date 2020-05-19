@@ -148,6 +148,13 @@ impl<W: Write + Send + 'static> FileLogger<W> {
 
         match timestamp {
             TimeConfig::None => {}
+            TimeConfig::Unix => {
+                let elapsed = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("time should not go backwards");
+                let _ = write!(file, " {:04}s", elapsed.as_secs(),);
+            }
+
             TimeConfig::Relative(start) => {
                 let elapsed = start.elapsed();
                 let _ = write!(
@@ -175,7 +182,7 @@ impl<W: Write + Send + 'static> FileLogger<W> {
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
                 let now = time::OffsetDateTime::now().format(&format);
-                let _ = write!(file, "{}", now);
+                let _ = write!(file, " {}", now);
             }
         }
 
