@@ -1,20 +1,16 @@
-use std::io::Write as _;
-
 use crate::{
     filters::Filters,
     options::{Options, StyleConfig, TimeConfig},
 };
-use termcolor::{ColorSpec, WriteColor as _};
+use termcolor::ColorSpec;
 
 /// Stdout logger which supports colors
 ///
-/// If 'NO_COLOR' env var is set, it'll override any color configurations.
+/// If 'NO_COLOR' env var is set, it'll override and disable any color configurations.
 pub struct TermLogger {
     options: Options,
     filters: Filters,
-
-    // TODO mention that it'll honor NO_COLOR
-    disable_colors: bool,
+    color_choice: termcolor::ColorChoice,
 }
 
 impl Default for TermLogger {
@@ -22,13 +18,13 @@ impl Default for TermLogger {
         Self {
             options: Options::default(),
             filters: Filters::from_env(),
-            disable_colors: std::env::var("NO_COLOR").is_ok(),
+            color_choice: determine_color_choice(),
         }
     }
 }
 
 impl TermLogger {
-    /// Use this logger as the 'installed' logger (same as alto_logger::init(this);)
+    /// Use this logger as the 'installed' logger (same as `alto_logger::init(this);`)
     pub fn init(self) -> Result<(), crate::Error> {
         crate::init(self)
     }
@@ -81,9 +77,27 @@ impl TermLogger {
         let _ = buffer.set_color(ColorSpec::new().set_fg(level_color.into()));
         let _ = write!(buffer, "{:<5}", record.level());
         let _ = buffer.reset();
+    }
 
-        match timestamp {
+    fn render_timestamp(
+        &self,
+        _record: &log::Record<'_>,
+        buffer: &mut (impl std::io::Write + termcolor::WriteColor),
+    ) {
+        let Options { color, time, .. } = &self.options;
+
+        match time {
             TimeConfig::None => {}
+
+            TimeConfig::Unix => {
+                let elapsed = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .expect("time should not go backwards");
+                let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                let _ = write!(buffer, " {:04}s", elapsed.as_secs(),);
+                let _ = buffer.reset();
+            }
+
             TimeConfig::Relative(start) => {
                 let elapsed = start.elapsed();
                 let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
@@ -172,4 +186,12 @@ impl log::Log for TermLogger {
 
     #[inline]
     fn flush(&self) {}
+}
+
+fn determine_color_choice() -> termcolor::ColorChoice {
+    if std::env::var("NO_COLOR").is_ok() {
+        termcolor::ColorChoice::Never
+    } else {
+        termcolor::ColorChoice::Auto
+    }
 }

@@ -8,9 +8,13 @@
 ///
 /// ***Note*** Defaults to the `None` timestamp
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum TimeConfig {
     /// No timestamp
     None,
+    ///
+    /// Timestamp since the UNIX epoch
+    Unix,
     /// Relative timestamp from the start of the program
     ///
     /// This prints out a fractional number of seconds from when the logger was initialized.
@@ -30,6 +34,7 @@ impl Clone for TimeConfig {
     fn clone(&self) -> Self {
         match self {
             Self::None => Self::None,
+            Self::Unix => Self::Unix,
             Self::Relative(inner) => Self::Relative(*inner),
             Self::Timing(_) => Self::Timing(Default::default()),
             #[cfg(feature = "time")]
@@ -47,6 +52,11 @@ impl TimeConfig {
     /// Create a Relative timestamp based on the previous logging statement
     pub fn relative_local() -> Self {
         Self::Timing(Default::default())
+    }
+
+    /// Create a timestamp based on the UNIX epoch (number of seconds since Jan. 1 1970)
+    pub fn unix_timestamp() -> Self {
+        Self::Unix
     }
 
     #[cfg(feature = "time")]
