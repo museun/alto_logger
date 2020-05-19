@@ -1,4 +1,3 @@
-#[non_exhaustive]
 /// How the timestamp should be displayed
 ///
 /// Several helper methods for constructing this type are provided

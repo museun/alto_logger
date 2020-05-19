@@ -47,24 +47,28 @@ impl TermLogger {
         Ok(Self {
             options,
             filters: Filters::from_env(),
-            disable_colors: std::env::var("NO_COLOR").is_ok(),
+            color_choice: determine_color_choice(),
         })
     }
 
     fn print(&self, record: &log::Record<'_>) {
-        let Options {
-            color,
-            time: timestamp,
-            style,
-            ..
-        } = &self.options;
-
-        let buf_writer = termcolor::BufferWriter::stdout(if self.disable_colors {
-            termcolor::ColorChoice::Never
-        } else {
-            termcolor::ColorChoice::Auto
-        });
+        let buf_writer = termcolor::BufferWriter::stdout(self.color_choice);
         let mut buffer = buf_writer.buffer();
+
+        self.render_level(&record, &mut buffer);
+        self.render_timestamp(&record, &mut buffer);
+        self.render_target(&record, &mut buffer);
+        self.render_payload(&record, &mut buffer);
+
+        let _ = buf_writer.print(&buffer);
+    }
+
+    fn render_level(
+        &self,
+        record: &log::Record<'_>,
+        buffer: &mut (impl std::io::Write + termcolor::WriteColor),
+    ) {
+        let color = &self.options.color;
 
         let level_color = match record.level() {
             log::Level::Error => color.level_error,
@@ -112,16 +116,32 @@ impl TermLogger {
             TimeConfig::DateTime(format) => {
                 let now = time::OffsetDateTime::now().format(&format);
                 let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
-                let _ = write!(buffer, "{}", now);
+                let _ = write!(buffer, " {}", now);
                 let _ = buffer.reset();
             }
         }
+    }
+
+    fn render_target(
+        &self,
+        record: &log::Record<'_>,
+        buffer: &mut (impl std::io::Write + termcolor::WriteColor),
+    ) {
+        let color = &self.options.color;
 
         let _ = write!(buffer, " [");
         let _ = buffer.set_color(ColorSpec::new().set_fg(color.target.into()));
         let _ = write!(buffer, "{}", record.target());
         let _ = buffer.reset();
         let _ = write!(buffer, "]");
+    }
+
+    fn render_payload(
+        &self,
+        record: &log::Record<'_>,
+        buffer: &mut (impl std::io::Write + termcolor::WriteColor),
+    ) {
+        let Options { style, color, .. } = &self.options;
 
         if let StyleConfig::MultiLine = style {
             let _ = writeln!(buffer);
@@ -134,8 +154,6 @@ impl TermLogger {
         let _ = write!(buffer, " {}", record.args());
         let _ = buffer.reset();
         let _ = writeln!(buffer);
-
-        let _ = buf_writer.print(&buffer);
     }
 }
 

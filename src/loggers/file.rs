@@ -175,7 +175,7 @@ impl<W: Write + Send + 'static> FileLogger<W> {
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
                 let now = time::OffsetDateTime::now().format(&format);
-                let _ = write!(file, "{}", now);
+                let _ = write!(file, " {}", now);
             }
         }
 
