@@ -152,7 +152,7 @@ impl<W: Write + Send + 'static> FileLogger<W> {
                 let elapsed = std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .expect("time should not go backwards");
-                let _ = write!(file, " {:04}s", elapsed.as_secs(),);
+                let _ = write!(file, " {:04}", elapsed.as_secs(),);
             }
 
             TimeConfig::Relative(start) => {
@@ -175,6 +175,8 @@ impl<W: Write + Send + 'static> FileLogger<W> {
                         elapsed.as_secs(),
                         elapsed.subsec_nanos()
                     );
+                } else {
+                    let _ = write!(file, " {:04}.{:09}s", 0, 0);
                 }
                 inner.replace(std::time::Instant::now());
             }
