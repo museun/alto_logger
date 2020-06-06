@@ -101,6 +101,7 @@ impl TermLogger {
             TimeConfig::Relative(start) => {
                 let elapsed = start.elapsed();
                 let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+
                 let _ = write!(
                     buffer,
                     " {:04}.{:09}s",
@@ -121,6 +122,10 @@ impl TermLogger {
                         elapsed.as_secs(),
                         elapsed.subsec_nanos()
                     );
+                    let _ = buffer.reset();
+                } else {
+                    let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                    let _ = write!(buffer, " {:04}.{:09}s", 0, 0);
                     let _ = buffer.reset();
                 }
                 inner.replace(std::time::Instant::now());

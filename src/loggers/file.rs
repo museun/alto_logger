@@ -175,6 +175,8 @@ impl<W: Write + Send + 'static> FileLogger<W> {
                         elapsed.as_secs(),
                         elapsed.subsec_nanos()
                     );
+                } else {
+                    let _ = write!(file, " {:04}.{:09}s", 0, 0);
                 }
                 inner.replace(std::time::Instant::now());
             }
