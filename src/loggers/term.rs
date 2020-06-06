@@ -94,7 +94,7 @@ impl TermLogger {
                     .duration_since(std::time::UNIX_EPOCH)
                     .expect("time should not go backwards");
                 let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
-                let _ = write!(buffer, " {:04}s", elapsed.as_secs(),);
+                let _ = write!(buffer, " {:04}", elapsed.as_secs());
                 let _ = buffer.reset();
             }
 
