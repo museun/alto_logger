@@ -3,6 +3,7 @@ use std::{borrow::Cow, collections::HashMap};
 #[derive(Debug)]
 pub(crate) enum FiltersKind {
     Default,
+    Blanket,
     List(Vec<(Cow<'static, str>, log::LevelFilter)>),
     Map(HashMap<Cow<'static, str>, log::LevelFilter>),
 }
@@ -34,7 +35,8 @@ impl Filters {
             .max();
 
         let kind = match mapping.len() {
-            0 => FiltersKind::Default,
+            0 if minimum.is_none() => FiltersKind::Default,
+            0 => FiltersKind::Blanket,
             d if d < 15 => {
                 mapping.shrink_to_fit();
                 FiltersKind::List(mapping)
@@ -61,8 +63,10 @@ impl Filters {
 
     #[inline]
     pub(crate) fn find_module(&self, module: &str) -> Option<log::LevelFilter> {
-        if let FiltersKind::Default = self.kind {
-            return None;
+        match self.kind {
+            FiltersKind::Default => return None,
+            FiltersKind::Blanket => return self.minimum,
+            _ => {}
         }
 
         if let Some(level) = self.find_exact(module) {
@@ -90,6 +94,7 @@ impl Filters {
     pub(crate) fn find_exact(&self, module: &str) -> Option<log::LevelFilter> {
         match &self.kind {
             FiltersKind::Default => None,
+            FiltersKind::Blanket => self.minimum,
             FiltersKind::List(levels) => levels
                 .iter()
                 .find_map(|(m, level)| Some(*level).filter(|_| m == module)),
@@ -123,6 +128,27 @@ mod tests {
             ("quux", log::LevelFilter::Error),
             ("something", log::LevelFilter::Debug),
             ("another::thing", log::LevelFilter::Debug),
+        ];
+
+        for (module, expected) in modules {
+            assert_eq!(filters.find_module(module).unwrap(), *expected);
+        }
+    }
+
+    #[test]
+    fn minimum() {
+        let filters =
+            Filters::from_str("debug,foo::bar=off,foo::baz=trace,foo=info,baz=off,quux=error");
+
+        let modules = &[
+            ("foo::bar", log::LevelFilter::Off),
+            ("foo::baz", log::LevelFilter::Trace),
+            ("foo", log::LevelFilter::Info),
+            ("baz", log::LevelFilter::Off),
+            ("quux", log::LevelFilter::Error),
+            ("something", log::LevelFilter::Debug),
+            ("another::thing", log::LevelFilter::Debug),
+            ("this::is::unknown", log::LevelFilter::Debug),
         ];
 
         for (module, expected) in modules {
