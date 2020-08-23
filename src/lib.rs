@@ -68,6 +68,16 @@ pub fn init_term_logger() -> Result<(), Error> {
     TermLogger::new(Options::default()).and_then(init)
 }
 
+/// Convenience function to create a terminal logger that uses a single-line output, and unix timestamps.
+pub fn init_alt_term_logger() -> Result<(), Error> {
+    TermLogger::new(
+        Options::default()
+            .with_style(StyleConfig::SingleLine)
+            .with_time(TimeConfig::unix_timestamp()),
+    )
+    .and_then(init)
+}
+
 mod error;
 mod filters;
 mod loggers;
