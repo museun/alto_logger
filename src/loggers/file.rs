@@ -183,8 +183,9 @@ impl<W: Write + Send + 'static> FileLogger<W> {
 
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
-                let now = time::OffsetDateTime::now().format(&format);
-                let _ = write!(file, " {}", now);
+                if let Ok(now) = time::OffsetDateTime::now_utc().format(&format) {
+                    let _ = write!(file, " {}", now);
+                }
             }
         }
 

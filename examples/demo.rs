@@ -7,7 +7,9 @@ fn main() {
     std::env::set_var("RUST_LOG", "demo=trace");
 
     let opts = Options::default()
-        .with_time(TimeConfig::date_time_format("%c"))
+        .with_time(TimeConfig::date_time_format(
+            time::macros::format_description!("[hour]:[minute]:[second]"),
+        ))
         .with_style(StyleConfig::SingleLine)
         .with_color({
             let mut config = ColorConfig::only_levels();

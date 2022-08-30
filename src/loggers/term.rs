@@ -33,13 +33,6 @@ impl TermLogger {
     pub fn new(options: impl Into<Options>) -> Result<Self, crate::Error> {
         let options = options.into();
 
-        #[cfg(feature = "time")]
-        {
-            if let TimeConfig::DateTime(format) = &options.time {
-                time::validate_format_string(format).map_err(crate::Error::InvalidFormatString)?;
-            }
-        }
-
         Ok(Self {
             options,
             filters: Filters::from_env(),
@@ -133,10 +126,11 @@ impl TermLogger {
 
             #[cfg(feature = "time")]
             TimeConfig::DateTime(format) => {
-                let now = time::OffsetDateTime::now().format(&format);
-                let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
-                let _ = write!(buffer, " {}", now);
-                let _ = buffer.reset();
+                if let Ok(now) = time::OffsetDateTime::now_utc().format(&&format) {
+                    let _ = buffer.set_color(ColorSpec::new().set_fg(color.timestamp.into()));
+                    let _ = write!(buffer, " {}", now);
+                    let _ = buffer.reset();
+                }
             }
         }
     }

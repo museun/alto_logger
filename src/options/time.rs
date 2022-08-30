@@ -21,13 +21,14 @@ pub enum TimeConfig {
     Relative(std::time::Instant),
     /// Relative timestamp from the previous log statement
     ///
-    /// This prints out a fractional number of seconds since the last statement was logged        
+    /// This prints out a fractional number of seconds since the last statement was logged
     Timing(std::sync::Mutex<Option<std::time::Instant>>),
+
     #[cfg(feature = "time")]
-    /// Timestamp formatted with from UTC 'now'. See [`formatting`](https://docs.rs/time/0.2.9/time/index.html#formatting)
+    /// Timestamp formatted with from UTC 'now'. See [`formatting`](https://time-rs.github.io/book/api/format-description.html)
     ///
-    /// This allows you to provide a 'fixed' date time. (e.g. UTC offset or unix timestamp or whatever you want)    
-    DateTime(String),
+    /// This allows you to provide a 'fixed' date time. (e.g. UTC offset or unix timestamp or whatever you want)
+    DateTime(&'static [time::format_description::FormatItem<'static>]),
 }
 
 impl Clone for TimeConfig {
@@ -61,8 +62,17 @@ impl TimeConfig {
 
     #[cfg(feature = "time")]
     /// Create a DateTime format
-    pub fn date_time_format(s: impl ToString) -> Self {
-        Self::DateTime(s.to_string())
+    ///
+    /// See the formatting description [here](https://time-rs.github.io/book/api/format-description.html)
+    ///
+    /// This requires you to use a statically-parsed `format_description`.
+    ///
+    /// you can get one via [`format_description`](https://docs.rs/time/0.3.14/time/macros/macro.format_description.html)
+    /// or using a [well-known format](https://docs.rs/time/0.3.14/time/format_description/well_known/index.html)
+    pub fn date_time_format(
+        format_description: &'static [time::format_description::FormatItem<'static>],
+    ) -> Self {
+        Self::DateTime(format_description)
     }
 }
 
